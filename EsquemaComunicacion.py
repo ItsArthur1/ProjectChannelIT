@@ -1,96 +1,91 @@
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from Crypto.Random import get_random_bytes
+import cv2
 import numpy as np
-import scipy.constants as const
+import random
 import time
 
-class Satelite:
-    def tomar_foto(self, ruta):
-        print("Tomando foto...")
-        with open(ruta, "rb") as f:
-            datos = f.read()
-        return datos
-    
-    def encriptar_foto(self, datos, clave_aes):
-        print("Encriptando foto...")
-        cipher = AES.new(clave_aes, AES.MODE_CBC)
-        iv = cipher.iv
-        datos_encriptados = cipher.encrypt(pad(datos, AES.block_size))
-        return datos_encriptados, iv
+class Canal:
+    def __init__(self):
+        self.paquetes = []
 
-class AlmacenamientoEmisor:
-    def __init__(self, velocidad):
-        self.velocidad = velocidad
-        self.datos_almacenados = []
+    def enviar_paquete(self, paquete):
+        # Simula el envío del paquete a través del canal
+        time.sleep(0.2)  # Simula un tiempo de transmisión de 100 ms
+        self.paquetes.append(paquete)
+        print("Paquete enviado")
 
-    def almacenar(self, datos):
-        print("Almacenando datos en el emisor...")
-        time.sleep(len(datos) / self.velocidad)  # Simular tiempo de almacenamiento
-        self.datos_almacenados.append(datos)
+    def recibir_paquete(self):
+        if self.paquetes:
+            # Simula la recepción de un paquete desde el canal
+            print("Paquete recibido")
+            return self.paquetes.pop(0)
+        return None
 
-    def obtener_datos(self):
-        return self.datos_almacenados.pop(0)
+class Almacenamiento:
+    def __init__(self, filename):
+        self.filename = filename
 
-class AlmacenamientoReceptor:
-    def __init__(self, velocidad):
-        self.velocidad = velocidad
-        self.datos_almacenados = []
+    def guardar_paquete(self, paquete):
+        # Guarda un paquete en el almacenamiento (archivo)
+        with open(self.filename, 'ab') as file:
+            np.save(file, paquete)
+        print(f"Paquete guardado en {self.filename}")
 
-    def almacenar(self, datos):
-        print("Almacenando datos en el receptor...")
-        time.sleep(len(datos) / self.velocidad)  # Simular tiempo de almacenamiento
-        self.datos_almacenados.append(datos)
+    def guardar_imagen(self, imagen):
+        # Guarda una imagen decodificada en el almacenamiento
+        cv2.imwrite(self.filename, imagen)
+        print(f"Imagen guardada en {self.filename}")
 
-    def obtener_datos(self):
-        return self.datos_almacenados.pop(0)
+class Emisor:
+    def __init__(self, image_path, canal):
+        self.image_path = image_path
+        self.canal = canal
 
-class CanalComunicacion:
-    def __init__(self, velocidad, distancia, factor_ruido_cosmico, factor_ruido_galactico):
-        self.velocidad = velocidad
-        self.distancia = distancia
-        self.factor_ruido_cosmico = factor_ruido_cosmico
-        self.factor_ruido_galactico = factor_ruido_galactico
+    def cargar_imagen(self):
+        print("Cargando imagen...")
+        return cv2.imread(self.image_path)
 
-    def transmitir(self, datos):
-        print("Transmitiendo datos por el canal...")
-        tiempo_propagacion = self.distancia / const.speed_of_light
-        tiempo_transmision = len(datos) / self.velocidad
-        tiempo_total = tiempo_propagacion + tiempo_transmision
-        datos_con_ruido = self.aplicar_ruido(datos)
-        return datos_con_ruido
+    def codificar_imagen(self, pixel_matrix, alto, ancho):
+        paquetes = []
 
-    def recibir(self, datos):
-        print("Recibiendo datos por el canal...")
-        time.sleep(len(datos) / self.velocidad)  # Simular tiempo de recepción
-        return datos
+        for i in range(0, alto, alto):
+            for j in range(0, ancho, ancho):
+                paquete = pixel_matrix[i:i + alto, j:j + ancho]
+                paquetes.append(paquete)
 
-    def aplicar_ruido(self, datos):
-        datos_array = np.frombuffer(datos, dtype=np.uint8)
-        ruido_cosmico = np.random.normal(0, self.factor_ruido_cosmico, len(datos_array))
-        ruido_galactico = np.random.normal(0, self.factor_ruido_galactico, len(datos_array))
-        datos_con_ruido = datos_array + ruido_cosmico + ruido_galactico
-        datos_con_ruido = np.clip(datos_con_ruido, 0, 255).astype(np.uint8)
-        return bytes(datos_con_ruido)
+        print("Imagen codificada en paquetes")
+        return paquetes
+
+    def enviar_datos(self, paquetes):
+        for paquete in paquetes:
+            self.canal.enviar_paquete(paquete)
 
 class Receptor:
-    def __init__(self, canal, almacenamiento):
+    def __init__(self, canal, almacenamiento_paquetes, almacenamiento_imagen):
         self.canal = canal
-        self.almacenamiento = almacenamiento
+        self.almacenamiento_paquetes = almacenamiento_paquetes
+        self.almacenamiento_imagen = almacenamiento_imagen
 
-    def recibir(self, datos):
-        datos_recibidos = self.canal.recibir(datos)
-        return datos_recibidos
+    def recibir_datos(self):
+        paquetes_recibidos = []
+        while True:
+            paquete = self.canal.recibir_paquete()
+            if paquete is None:
+                break
+            paquetes_recibidos.append(paquete)
+        print("Todos los paquetes recibidos")
+        return paquetes_recibidos
 
-    def guardar_imagen_decodificada(self, ruta, datos_encriptados, clave_aes, iv):
-        print("Guardando y decodificando imagen...")
-        datos_desencriptados = self.desencriptar_foto(datos_encriptados, clave_aes, iv)
-        self.almacenamiento.almacenar(datos_desencriptados)
-        imagen = self.almacenamiento.obtener_datos()
-        with open(ruta, "wb") as f:
-            f.write(imagen)
+    def decodificar_paquetes(self, paquetes_recibidos, alto, ancho):
+        paquetes_ajustados = [cv2.resize(paquete, (ancho, alto)) for paquete in paquetes_recibidos]
 
-    def desencriptar_foto(self, datos_encriptados, clave_aes, iv):
-        cipher = AES.new(clave_aes, AES.MODE_CBC, iv=iv)
-        datos_desencriptados = unpad(cipher.decrypt(datos_encriptados), AES.block_size)
-        return datos_desencriptados
+        if paquetes_ajustados:
+            print("Paquetes decodificados y ajustados")
+            return np.vstack([np.hstack(row) for row in paquetes_ajustados])
+        else:
+            print("No se recibieron paquetes válidos.")
+            return None
+
+    def guardar_imagen(self, imagen_decodificada):
+        self.almacenamiento_imagen.guardar_imagen(imagen_decodificada)
+        print(f"Imagen decodificada guardada en {self.almacenamiento_imagen.filename}")
+
