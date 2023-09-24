@@ -6,7 +6,7 @@ if __name__ == "__main__":
     # Carpeta para el Emisor
     carpeta_emisor = "./AlmacenamientoEmisor"
     almacenamiento_paquetes_emisor = Almacenamiento(f"{carpeta_emisor}/paquetes_emisor.bin")
-
+    almacenamiento_imagen_emisor = Almacenamiento(f"{carpeta_emisor}/imagen_decodificada.jpg")
     
     # Carpeta para el Receptor
     carpeta_receptor = "./AlmacenamientoReceptor"
@@ -26,7 +26,6 @@ if __name__ == "__main__":
     
     # Emisor: Envía los paquetes al canal
     emisor.enviar_datos(paquetes)
-    print("Datos enviados")
 
     # Receptor
     receptor = Receptor(canal, almacenamiento_paquetes_receptor, almacenamiento_imagen_receptor)
@@ -39,6 +38,10 @@ if __name__ == "__main__":
     imagen_decodificada = receptor.decodificar_paquetes(paquetes_recibidos, alto, ancho)
     
     # Guardar la imagen decodificada en la carpeta del Emisor y del Receptor
-
+    almacenamiento_imagen_emisor.guardar_imagen(imagen_decodificada)
     almacenamiento_imagen_receptor.guardar_imagen(imagen_decodificada)
-    print("Proceso de recepción y decodificación completado")
+
+    # Calcular entropía
+    canal.calcular_entropias()
+    for i, entropia in enumerate(canal.entropias):
+        print(f"Entropía del paquete {i + 1}: {entropia:.2f} bits")
