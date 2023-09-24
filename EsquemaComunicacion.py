@@ -10,30 +10,24 @@ class Canal:
         self.entropias = []
 
     def enviar_paquete(self, paquete):
-        # Simula el envío del paquete a través del canal
-        # Aquí puedes agregar ruido al paquete
-        probabilidad_ruido = 0.2  # 20% de probabilidad de que el paquete tenga ruido
+        probabilidad_ruido = 0.2
         if random.random() < probabilidad_ruido:
             paquete = self.agregar_ruido(paquete)
-        time.sleep(0.2)  # Simula un tiempo de transmisión de 100 ms
+        time.sleep(0.2)
         self.paquetes.append(paquete)
         
     def agregar_ruido(self, paquete):
-        # Aquí puedes agregar algún tipo de ruido al paquete
-        # Por ejemplo, agregar ruido gaussiano
         ruido = np.random.normal(0, 25, paquete.shape).astype(np.uint8)
         paquete_con_ruido = cv2.add(paquete, ruido)
         return paquete_con_ruido
 
     def recibir_paquete(self):
         if self.paquetes:
-            # Simula la recepción de un paquete desde el canal
             return self.paquetes.pop(0)
         return None
 
     def calcular_entropias(self):
         for paquete in self.paquetes:
-            # Calcular la entropía del paquete y agregarla a la lista
             entropia = entropy(paquete.ravel(), base=2)
             self.entropias.append(entropia)
 
@@ -42,12 +36,10 @@ class Almacenamiento:
         self.filename = filename
 
     def guardar_paquete(self, paquete):
-        # Guarda un paquete en el almacenamiento (archivo)
         with open(self.filename, 'ab') as file:
             np.save(file, paquete)
 
     def guardar_imagen(self, imagen):
-        # Guarda una imagen decodificada en el almacenamiento
         cv2.imwrite(self.filename, imagen)
 
 class Emisor:
