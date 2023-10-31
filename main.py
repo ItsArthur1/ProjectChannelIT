@@ -1,38 +1,131 @@
-from EsquemaComunicacion import Canal, Almacenamiento, Emisor, Receptor
+from Clases.Emisor          import Emisor
+from Clases.Codificador     import Codificador
+from Clases.Decodificador   import Decodificador
+from Clases.Almacenamiento  import Almacenamiento
+from Clases.Canal           import Canal
+from Clases.Multiplexor     import Multiplexor
+from Clases.Receptor        import Receptor
+from Clases.Entropia        import Entropia
+from Clases.Huffman         import Huffman
+from Clases.ShannonFano     import ShannonFano
+from Clases.GuardarImg      import GuardarImg
+from collections import Counter, defaultdict
 
+def menu_principal():
+    print("Seleccione el tipo de codificación:")
+    print("1. Codificación P.O.U")
+    print("2. Codificación Huffman")
+    print("3. Codificación Shannon-Fano")
+    print("4. Salir")
+    
+    eleccion = input("Ingrese el número correspondiente a su elección: ")
+
+    if eleccion == "1":
+        pou()
+    elif eleccion == "2":
+        huffman()
+    elif eleccion == "3":
+        print("Codificación Shannon-Fano aún no implementada.")
+    elif eleccion == "4":
+        print("¡Hasta luego!")
+    else:
+        print("Opción no válida. Por favor, seleccione una opción correcta.")
+        menu_principal()
+
+def pou():
+    # Sección del emisor
+    emisor = Emisor("./img/descarga.jpg", Codificador())
+    datos, size = emisor.enviar_paquetes()
+
+    almacenamiento_emisor = Almacenamiento(datos)
+    datos_emisor = almacenamiento_emisor.data
+
+
+    # Sección de canal y multiplexor
+    canal1 = Canal(id_canal=1)
+    canal2 = Canal(id_canal=2)
+    canal3 = Canal(id_canal=3)
+    canal4 = Canal(id_canal=4)
+    canal5 = Canal(id_canal=5)
+
+    multiplexor = Multiplexor()
+    multiplexor.agregar_canal(canal1)
+    multiplexor.agregar_canal(canal2)
+    multiplexor.agregar_canal(canal3)
+    multiplexor.agregar_canal(canal4)
+    multiplexor.agregar_canal(canal5)
+
+    datos_transmitidos = multiplexor.transmitir_datos(datos_emisor)
+    print(f"la longitud original de los datos es: {len(datos_emisor)} y después del canal {len(datos_transmitidos)}")
+    print(datos_transmitidos)
+
+    # Sección de decodificar los datos del emisor que se mandaron del canal y guardar la imagen a partir de los datos decodificados
+    receptor = Receptor(datos_transmitidos)
+    datos_recibidos = receptor.recibir_datos()
+    almacenamiento_receptor = Almacenamiento(datos_recibidos)
+    datos_receptor = almacenamiento_receptor.data
+    print(datos_receptor)
+    codificar_datos = receptor.decodificar_datos(Decodificador())
+
+    # Entropía
+    entropia = Entropia()
+    calcular_entropia = entropia.calcular_entropia(datos_receptor)
+    print(f"La entropia es: {calcular_entropia}")
+
+    guardar_img = GuardarImg().guardar_imagen(datos_recibidos, size, "img.jpg")
+
+
+def huffman():
+    emisor                  = Emisor("./img/descarga.jpg", Codificador())
+    datos, size             = emisor.enviar_paquetes()    
+    huffman                 = Huffman()
+    datos_codificados       = emisor.codificar_huffman(huffman, datos)
+
+    almacenamiento_emisor   = Almacenamiento(datos_codificados)
+    mensaje_codificado      = almacenamiento_emisor.data
+    
+    # # Imprimir códigos Huffman
+    # print("\nCódigos Huffman:")    
+    
+    # for caracter, codigo in huffman.codigos.items():
+    #     print(f"'{caracter}': {codigo}")
+
+
+
+    # Sección de canal y multiplexor
+    canal1                  = Canal(id_canal=1)
+    canal2                  = Canal(id_canal=2)
+    canal3                  = Canal(id_canal=3)
+    canal4                  = Canal(id_canal=4)
+    canal5                  = Canal(id_canal=5)
+
+    multiplexor             = Multiplexor()
+    
+    
+    multiplexor.agregar_canal(canal1)
+    multiplexor.agregar_canal(canal2)
+    multiplexor.agregar_canal(canal3)
+    multiplexor.agregar_canal(canal4)
+    multiplexor.agregar_canal(canal5)
+
+    datos_transmitidos      = multiplexor.transmitir_datos(mensaje_codificado)
+
+    receptor                = Receptor(datos_transmitidos)
+    
+    mensaje_decodificado    = receptor.decodificar_datos(huffman)
+
+
+    # Verificar que el mensaje decodificado sea igual al original
+    if datos == mensaje_decodificado:
+        print("\n¡El mensaje fue codificado y decodificado correctamente!")    
+    else:
+        print("\nHubo un error al decodificar el mensaje.")
+        return 0
+    
+        
+    img                     = GuardarImg()
+    img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg")
+
+# Iniciar el programa
 if __name__ == "__main__":
-    canal = Canal()
-
-    carpeta_emisor = "./AlmacenamientoEmisor"
-    almacenamiento_paquetes_emisor = Almacenamiento(f"{carpeta_emisor}/paquetes_emisor.bin")
-    almacenamiento_imagen_emisor = Almacenamiento(f"{carpeta_emisor}/imagen_decodificada.jpg")
-    
-    carpeta_receptor = "./AlmacenamientoReceptor"
-    almacenamiento_paquetes_receptor = Almacenamiento(f"{carpeta_receptor}/paquetes_receptor.bin")
-    almacenamiento_imagen_receptor = Almacenamiento(f"{carpeta_receptor}/imagen_decodificada.jpg")
-
-    emisor = Emisor("./AlmacenamientoEmisor/many-flowers.jpg", canal)
-
-    imagen_original = emisor.cargar_imagen()
-    alto, ancho, _ = imagen_original.shape
-    paquetes = emisor.codificar_imagen(imagen_original, alto, ancho)
-    
-    for paquete in paquetes:
-        almacenamiento_paquetes_emisor.guardar_paquete(paquete)
-    
-    emisor.enviar_datos(paquetes)
-
-    receptor = Receptor(canal, almacenamiento_paquetes_receptor, almacenamiento_imagen_receptor)
-    paquetes_recibidos = receptor.recibir_datos()
-    
-    for paquete in paquetes_recibidos:
-        almacenamiento_paquetes_receptor.guardar_paquete(paquete)
-    
-    imagen_decodificada = receptor.decodificar_paquetes(paquetes_recibidos, alto, ancho)
-    
-    almacenamiento_imagen_emisor.guardar_imagen(imagen_decodificada)
-    almacenamiento_imagen_receptor.guardar_imagen(imagen_decodificada)
-
-    canal.calcular_entropias()
-    for i, entropia in enumerate(canal.entropias):
-        print(f"Entropía del paquete {i + 1}: {entropia:.2f} bits")
+    menu_principal()
