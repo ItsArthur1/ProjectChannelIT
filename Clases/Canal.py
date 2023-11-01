@@ -1,7 +1,7 @@
 import random
 
 class Canal:
-    def __init__(self, id_canal, probabilidad_ruido=0.2):
+    def __init__(self, id_canal, probabilidad_ruido=0.8):
         self.id_canal = id_canal
         self.probabilidad_ruido = probabilidad_ruido
 

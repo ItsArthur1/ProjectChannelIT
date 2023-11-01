@@ -7,8 +7,8 @@ class Emisor:
         paquetes, dimensiones = self.codificador.codificar(self.img)
         return paquetes, dimensiones
     
-    def codificar_huffman(self, Huffman, datos):
-        datos_codificados = Huffman.codificar(datos)
+    def codificar(self, codificador, datos):
+        datos_codificados = codificador.codificar(datos)
         return datos_codificados
     
     
