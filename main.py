@@ -35,15 +35,18 @@ def menu_principal():
     else:
         print("Opción no válida. Por favor, seleccione una opción correcta.")
         menu_principal()
+        
+        
+
 
 def normal():
     # Sección del emisor
     emisor = Emisor("./img/descarga.jpg", Codificador())
-    datos, size = emisor.enviar_paquetes()
+    datos_codificados, size = emisor.enviar_paquetes()
 
-    almacenamiento_emisor = Almacenamiento(datos)
-    datos_emisor = almacenamiento_emisor.data
-
+    # Generar hashes de los datos codificados y crear diccionario de hashes
+    hashes_datos = [emisor.generar_hash(dato) for dato in datos_codificados]
+    diccionario_hashes = {hash_dato: dato for hash_dato, dato in zip(hashes_datos, datos_codificados)}
 
     # Sección de canal y multiplexor
     canal1 = Canal(id_canal=1)
@@ -59,222 +62,230 @@ def normal():
     multiplexor.agregar_canal(canal4)
     multiplexor.agregar_canal(canal5)
 
-    datos_transmitidos = multiplexor.transmitir_datos(datos_emisor)
-    print(f"la longitud original de los datos es: {len(datos_emisor)} y después del canal {len(datos_transmitidos)}")
-    print(datos_transmitidos)
+    # Transmitir solo los hashes a través del multiplexor
+    hashes_transmitidos = multiplexor.transmitir_datos(hashes_datos)
+    print(f"Longitud original de los hashes: {len(hashes_datos)} y después del canal: {len(hashes_transmitidos)}")
 
-    # Sección de decodificar los datos del emisor que se mandaron del canal y guardar la imagen a partir de los datos decodificados
-    receptor = Receptor(datos_transmitidos)
-    datos_recibidos = receptor.recibir_datos()
+    # Sección del receptor
+    receptor = Receptor(hashes_transmitidos)
+
+    # Utilizar la búsqueda binaria para encontrar los datos codificados correspondientes
+    datos_recibidos = []
+    for hash_dato in hashes_transmitidos:
+        dato_decodificado = receptor.busqueda_binaria(hash_dato, diccionario_hashes)
+        if dato_decodificado is not None:
+            datos_recibidos.append(dato_decodificado)
+
+    # Almacenar y procesar los datos recibidos
     almacenamiento_receptor = Almacenamiento(datos_recibidos)
     datos_receptor = almacenamiento_receptor.data
-    print(datos_receptor)
-    codificar_datos = receptor.decodificar_datos(Decodificador())
 
-    # Entropía
-    entropia = Entropia()
-    calcular_entropia = entropia.calcular_entropia(datos_receptor)
-    print(f"La entropia es: {calcular_entropia}")
+    # Guardar imagen decodificada
+    guardar_img = GuardarImg().guardar_imagen(datos_receptor, size, "img.jpg")
 
-    guardar_img = GuardarImg().guardar_imagen(datos_recibidos, size, "img.jpg")
+
+
 
 
 def huffman():
-    emisor                  = Emisor("./img/descarga.jpg", Codificador())
-    datos, size             = emisor.enviar_paquetes()    
-    huffman                 = Huffman()
-    datos_codificados       = emisor.codificar(huffman, datos)
+    # Sección del emisor
+    emisor = Emisor("./img/descarga.jpg", Codificador())
+    datos, size = emisor.enviar_paquetes()    
+    huffman = Huffman()
+    datos_codificados = emisor.codificar(huffman, datos)
 
-    almacenamiento_emisor   = Almacenamiento(datos_codificados)
-    mensaje_codificado      = almacenamiento_emisor.data
-    
-    # # Imprimir códigos Huffman
-    # print("\nCódigos Huffman:")    
-    
-    # for caracter, codigo in huffman.codigos.items():
-    #     print(f"'{caracter}': {codigo}")
-
-
+    # Generar hashes de los datos codificados y crear diccionario de hashes
+    hashes_datos = [emisor.generar_hash(dato) for dato in datos_codificados]
+    diccionario_hashes = {hash_dato: dato for hash_dato, dato in zip(hashes_datos, datos_codificados)}
 
     # Sección de canal y multiplexor
-    canal1                  = Canal(id_canal=1)
-    canal2                  = Canal(id_canal=2)
-    canal3                  = Canal(id_canal=3)
-    canal4                  = Canal(id_canal=4)
-    canal5                  = Canal(id_canal=5)
+    canal1 = Canal(id_canal=1)
+    canal2 = Canal(id_canal=2)
+    canal3 = Canal(id_canal=3)
+    canal4 = Canal(id_canal=4)
+    canal5 = Canal(id_canal=5)
 
-    multiplexor             = Multiplexor()
-    
-    
+    multiplexor = Multiplexor()
     multiplexor.agregar_canal(canal1)
     multiplexor.agregar_canal(canal2)
     multiplexor.agregar_canal(canal3)
     multiplexor.agregar_canal(canal4)
     multiplexor.agregar_canal(canal5)
 
-    datos_transmitidos      = multiplexor.transmitir_datos(mensaje_codificado)
+    # Transmitir solo los hashes a través del multiplexor
+    hashes_transmitidos = multiplexor.transmitir_datos(hashes_datos)
 
-    receptor                = Receptor(datos_transmitidos)
-    
-    mensaje_decodificado    = receptor.decodificar_datos(huffman)
+    # Sección del receptor
+    receptor = Receptor(hashes_transmitidos)
 
+    # Utilizar la búsqueda binaria para encontrar los datos codificados correspondientes
+    datos_recibidos = []
+    for hash_dato in hashes_transmitidos:
+        dato_decodificado = receptor.busqueda_binaria(hash_dato, diccionario_hashes)
+        if dato_decodificado is not None:
+            datos_recibidos.append(dato_decodificado)
 
-    # Verificar que el mensaje decodificado sea igual al original
+    # Decodificar los datos recibidos con Huffman
+    mensaje_decodificado = huffman.decodificador(datos_recibidos)
+
+    # Verificar la correcta codificación y decodificación
     if datos == mensaje_decodificado:
-        print("\n¡El mensaje fue codificado y decodificado correctamente!")    
+        print("\n¡El mensaje fue codificado y decodificado correctamente!")
     else:
         print("\nHubo un error al decodificar el mensaje.")
         return 0
-    
-        
-    img                     = GuardarImg()
+
+    # Guardar la imagen decodificada
+    img = GuardarImg()
     img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg")
-    
-    
+
+
+
     
     
 def shannon_fano():
-    emisor                  = Emisor("./img/descarga.jpg", Codificador())
-    datos, size             = emisor.enviar_paquetes()    
-    shannon_fano            = ShannonFano()
-    datos_codificados       = emisor.codificar(shannon_fano, datos)
+    # Sección del emisor
+    emisor = Emisor("./img/descarga.jpg", Codificador())
+    datos, size = emisor.enviar_paquetes()    
+    shannon_fano = ShannonFano()
+    datos_codificados = emisor.codificar(shannon_fano, datos)
 
-    almacenamiento_emisor   = Almacenamiento(datos_codificados)
-    mensaje_codificado      = almacenamiento_emisor.data
-    
+    # Generar hashes de los datos codificados y crear diccionario de hashes
+    hashes_datos = [emisor.generar_hash(dato) for dato in datos_codificados]
+    diccionario_hashes = {hash_dato: dato for hash_dato, dato in zip(hashes_datos, datos_codificados)}
+
     # Sección de canal y multiplexor
-    canal1                  = Canal(id_canal=1)
-    canal2                  = Canal(id_canal=2)
-    canal3                  = Canal(id_canal=3)
-    canal4                  = Canal(id_canal=4)
-    canal5                  = Canal(id_canal=5)
+    canal1 = Canal(id_canal=1)
+    canal2 = Canal(id_canal=2)
+    canal3 = Canal(id_canal=3)
+    canal4 = Canal(id_canal=4)
+    canal5 = Canal(id_canal=5)
 
-    multiplexor             = Multiplexor()
-    
-    
+    multiplexor = Multiplexor()
     multiplexor.agregar_canal(canal1)
     multiplexor.agregar_canal(canal2)
     multiplexor.agregar_canal(canal3)
     multiplexor.agregar_canal(canal4)
     multiplexor.agregar_canal(canal5)
-    
 
-    datos_transmitidos      = multiplexor.transmitir_datos(mensaje_codificado)
+    # Transmitir solo los hashes a través del multiplexor
+    hashes_transmitidos = multiplexor.transmitir_datos(hashes_datos)
 
-    receptor                = Receptor(datos_transmitidos)
-    
-    mensaje_decodificado    = receptor.decodificar_datos(shannon_fano)
+    # Sección del receptor
+    receptor = Receptor(hashes_transmitidos)
 
+    # Utilizar la búsqueda binaria para encontrar los datos codificados correspondientes
+    datos_recibidos = []
+    for hash_dato in hashes_transmitidos:
+        dato_decodificado = receptor.busqueda_binaria(hash_dato, diccionario_hashes)
+        if dato_decodificado is not None:
+            datos_recibidos.append(dato_decodificado)
 
-    # Verificar que el mensaje decodificado sea igual al original
+    # Decodificar los datos recibidos con Shannon-Fano
+    mensaje_decodificado = shannon_fano.decodificador(datos_recibidos)
+
+    # Verificar la correcta codificación y decodificación
     if datos == mensaje_decodificado:
         print("\n¡El mensaje fue codificado y decodificado correctamente!")    
     else:
         print("\nHubo un error al decodificar el mensaje.")
         return 0
-    
-        
-    img                     = GuardarImg()
+
+    # Guardar la imagen decodificada
+    img = GuardarImg()
     img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg")
-    
-    
+
   
-  
-  
- 
 def rle():
-    emisor                  = Emisor("./img/descarga.jpg", Codificador())
-    datos, size             = emisor.enviar_paquetes()    
-    rle                     = RLE()
-    datos_codificados       = emisor.codificar(rle, datos)
+    emisor = Emisor("./img/descarga.jpg", Codificador())
+    datos, size = emisor.enviar_paquetes()    
+    rle = RLE()
+    datos_codificados = emisor.codificar(rle, datos)
 
-    almacenamiento_emisor   = Almacenamiento(datos_codificados)
-    mensaje_codificado      = almacenamiento_emisor.data
-    
-    # Sección de canal y multiplexor
-    canal1                  = Canal(id_canal=1)
-    canal2                  = Canal(id_canal=2)
-    canal3                  = Canal(id_canal=3)
-    canal4                  = Canal(id_canal=4)
-    canal5                  = Canal(id_canal=5)
+    hashes_datos = [emisor.generar_hash(dato) for dato in datos_codificados]
+    diccionario_hashes = {hash_dato: dato for hash_dato, dato in zip(hashes_datos, datos_codificados)}
 
-    multiplexor             = Multiplexor()
-    
-    
+    canal1 = Canal(id_canal=1)
+    canal2 = Canal(id_canal=2)
+    canal3 = Canal(id_canal=3)
+    canal4 = Canal(id_canal=4)
+    canal5 = Canal(id_canal=5)
+
+    multiplexor = Multiplexor()
     multiplexor.agregar_canal(canal1)
     multiplexor.agregar_canal(canal2)
     multiplexor.agregar_canal(canal3)
     multiplexor.agregar_canal(canal4)
     multiplexor.agregar_canal(canal5)
-    
 
-    datos_transmitidos      = multiplexor.transmitir_datos(mensaje_codificado)
+    hashes_transmitidos = multiplexor.transmitir_datos(hashes_datos)
 
-    receptor                = Receptor(datos_transmitidos)
-    
-    mensaje_decodificado    = receptor.decodificar_datos(rle)
+    receptor = Receptor(hashes_transmitidos)
 
+    datos_recibidos = []
+    for hash_dato in hashes_transmitidos:
+        dato_decodificado = receptor.busqueda_binaria(hash_dato, diccionario_hashes)
+        if dato_decodificado is not None:
+            datos_recibidos.append(dato_decodificado)
 
-    # Verificar que el mensaje decodificado sea igual al original
+    mensaje_decodificado = rle.decodificador(datos_recibidos)
+
     if datos == mensaje_decodificado:
         print("\n¡El mensaje fue codificado y decodificado correctamente!")    
     else:
         print("\nHubo un error al decodificar el mensaje.")
         return 0
-    
-        
-    img                     = GuardarImg()
-    img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg") 
-  
+
+    img = GuardarImg()
+    img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg")
   
   
   
  
+
+
 def inversa():
-    emisor                  = Emisor("./img/descarga.jpg", Codificador())
-    datos, size             = emisor.enviar_paquetes()    
-    inversa                 = Inversa()
-    datos_codificados       = emisor.codificar(inversa, datos)
+    emisor = Emisor("./img/descarga.jpg", Codificador())
+    datos, size = emisor.enviar_paquetes()    
+    inversa = Inversa()
+    datos_codificados = emisor.codificar(inversa, datos)
 
-    almacenamiento_emisor   = Almacenamiento(datos_codificados)
-    mensaje_codificado      = almacenamiento_emisor.data
-    
-    # Sección de canal y multiplexor
-    canal1                  = Canal(id_canal=1)
-    canal2                  = Canal(id_canal=2)
-    canal3                  = Canal(id_canal=3)
-    canal4                  = Canal(id_canal=4)
-    canal5                  = Canal(id_canal=5)
+    hashes_datos = [emisor.generar_hash(dato) for dato in datos_codificados]
+    diccionario_hashes = {hash_dato: dato for hash_dato, dato in zip(hashes_datos, datos_codificados)}
 
-    multiplexor             = Multiplexor()
-    
-    
+    canal1 = Canal(id_canal=1)
+    canal2 = Canal(id_canal=2)
+    canal3 = Canal(id_canal=3)
+    canal4 = Canal(id_canal=4)
+    canal5 = Canal(id_canal=5)
+
+    multiplexor = Multiplexor()
     multiplexor.agregar_canal(canal1)
     multiplexor.agregar_canal(canal2)
     multiplexor.agregar_canal(canal3)
     multiplexor.agregar_canal(canal4)
     multiplexor.agregar_canal(canal5)
-    
 
-    datos_transmitidos      = multiplexor.transmitir_datos(mensaje_codificado)
+    hashes_transmitidos = multiplexor.transmitir_datos(hashes_datos)
 
-    receptor                = Receptor(datos_transmitidos)
-    
-    mensaje_decodificado    = receptor.decodificar_datos(inversa)
+    receptor = Receptor(hashes_transmitidos)
 
+    datos_recibidos = []
+    for hash_dato in hashes_transmitidos:
+        dato_decodificado = receptor.busqueda_binaria(hash_dato, diccionario_hashes)
+        if dato_decodificado is not None:
+            datos_recibidos.append(dato_decodificado)
 
-    # Verificar que el mensaje decodificado sea igual al original
+    mensaje_decodificado = inversa.decodificador(datos_recibidos)
+
     if datos == mensaje_decodificado:
         print("\n¡El mensaje fue codificado y decodificado correctamente!")    
     else:
         print("\nHubo un error al decodificar el mensaje.")
         return 0
-    
-        
-    img                     = GuardarImg()
-    img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg") 
-  
-  
+
+    img = GuardarImg()
+    img.guardar_imagen(mensaje_decodificado, size, "./img_codi.jpg")
   
   
 
